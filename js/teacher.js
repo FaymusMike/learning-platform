@@ -7,6 +7,21 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
+    // Wait for Firebase to be ready
+    function waitForFirebase() {
+        if (window.auth && window.db && auth.currentUser) {
+            initializeTeacherDashboard();
+        } else {
+            setTimeout(waitForFirebase, 100);
+        }
+    }
+    
+    waitForFirebase();
+});
+
+function initializeTeacherDashboard() {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    
     // DOM Elements
     const teacherNameElement = document.getElementById('teacherName');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -41,8 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const quickCreateQuiz = document.getElementById('quickCreateQuiz');
     const quickViewStudents = document.getElementById('quickViewStudents');
 
-    const YOUTUBE_API_KEY = 'AIzaSyA9Tzxs4nrdkflcGKslXo00lhlMP9EIIug';
-    
     // Set teacher name
     if (currentUser.firstName) {
         teacherNameElement.textContent = currentUser.firstName;
@@ -102,11 +115,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add question to quiz
     addQuestionBtn.addEventListener('click', addQuestionToQuiz);
     
-    // Save lesson
-    saveLessonBtn.addEventListener('click', saveLesson);
+    // Save lesson - FIXED: Added authentication check
+    saveLessonBtn.addEventListener('click', function() {
+        // Check if user is authenticated
+        if (!auth.currentUser) {
+            alert('Please sign in again');
+            window.location.href = 'auth.html';
+            return;
+        }
+        saveLesson();
+    });
     
-    // Save quiz
-    saveQuizBtn.addEventListener('click', saveQuiz);
+    // Save quiz - FIXED: Added authentication check
+    saveQuizBtn.addEventListener('click', function() {
+        // Check if user is authenticated
+        if (!auth.currentUser) {
+            alert('Please sign in again');
+            window.location.href = 'auth.html';
+            return;
+        }
+        saveQuiz();
+    });
     
     // Load initial data
     loadDashboardData();
@@ -278,17 +307,26 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Double-check authentication
+        if (!auth.currentUser) {
+            alert('Authentication error. Please sign in again.');
+            window.location.href = 'auth.html';
+            return;
+        }
+        
         const lessonData = {
             title: title,
             topic: topic,
             content: content,
             videoLink: videoLink || '',
             resourceLinks: resourceLinks ? resourceLinks.split('\n') : [],
-            teacherId: currentUser.uid,
+            teacherId: auth.currentUser.uid, // Use auth.currentUser.uid directly
             teacherName: currentUser.firstName + ' ' + currentUser.lastName,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
+        
+        console.log('Saving lesson:', lessonData);
         
         // Save to Firestore
         db.collection('lessons').add(lessonData)
@@ -303,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch((error) => {
                 console.error('Error saving lesson: ', error);
-                alert('Error saving lesson. Please try again.');
+                alert('Error saving lesson. Please check Firestore rules or try again.');
             });
     }
     
@@ -313,6 +351,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!title) {
             alert('Please enter a quiz title');
+            return;
+        }
+        
+        // Double-check authentication
+        if (!auth.currentUser) {
+            alert('Authentication error. Please sign in again.');
+            window.location.href = 'auth.html';
             return;
         }
         
@@ -371,11 +416,13 @@ document.addEventListener('DOMContentLoaded', function() {
             title: title,
             description: description,
             questions: questions,
-            teacherId: currentUser.uid,
+            teacherId: auth.currentUser.uid, // Use auth.currentUser.uid directly
             teacherName: currentUser.firstName + ' ' + currentUser.lastName,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
+        
+        console.log('Saving quiz:', quizData);
         
         // Save to Firestore
         db.collection('quizzes').add(quizData)
@@ -390,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch((error) => {
                 console.error('Error saving quiz: ', error);
-                alert('Error saving quiz. Please try again.');
+                alert('Error saving quiz. Please check Firestore rules or try again.');
             });
     }
     
@@ -821,4 +868,4 @@ document.addEventListener('DOMContentLoaded', function() {
             return 'Unknown date';
         }
     }
-});
+};
