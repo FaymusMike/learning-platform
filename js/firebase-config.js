@@ -1,4 +1,6 @@
-// Firebase configuration
+// Firebase configuration - COMPLETE VERSION
+console.log("Loading Firebase configuration...");
+
 const firebaseConfig = {
   apiKey: "AIzaSyAZQrPWExzsRK8Use3QLrt0CKPxUgsxmes",
   authDomain: "blockvote-bf739.firebaseapp.com",
@@ -8,19 +10,26 @@ const firebaseConfig = {
   appId: "1:801871592271:web:db3c8768ea41b52ccbe33a"
 };
 
-// Initialize Firebase
-try {
+// Check if Firebase is available
+if (typeof firebase === 'undefined') {
+  console.error('Firebase SDK not loaded!');
+} else {
+  try {
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     
-    // Initialize Firebase services
+    // Initialize services
     const auth = firebase.auth();
     const db = firebase.firestore();
     
-    // Export for use in other files
+    // Make available globally
     window.auth = auth;
     window.db = db;
     
-    console.log("Firebase initialized successfully!");
-} catch (error) {
-    console.error("Firebase initialization error:", error);
+    console.log('Firebase initialized successfully!');
+    console.log('Project:', firebaseConfig.projectId);
+    
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+  }
 }
