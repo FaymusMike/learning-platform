@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    const YOUTUBE_API_KEY = 'AIzaSyA9Tzxs4nrdkflcGKslXo00lhlMP9EIIug';
+
     // Theme toggle functionality (dark/light mode)
     const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {

@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const signupFormContainer = document.getElementById('signupForm');
     const roleCards = document.querySelectorAll('.role-card');
     const googleSignInBtn = document.getElementById('googleSignIn');
+
+    const YOUTUBE_API_KEY = 'AIzaSyA9Tzxs4nrdkflcGKslXo00lhlMP9EIIug';
     
     let selectedRole = 'student'; // Default role
     

@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const quickCreateLesson = document.getElementById('quickCreateLesson');
     const quickCreateQuiz = document.getElementById('quickCreateQuiz');
     const quickViewStudents = document.getElementById('quickViewStudents');
+
+    const YOUTUBE_API_KEY = 'AIzaSyA9Tzxs4nrdkflcGKslXo00lhlMP9EIIug';
     
     // Set teacher name
     if (currentUser.firstName) {

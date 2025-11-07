@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const newDiscussionForm = document.getElementById('newDiscussionForm');
     const discussionsContainer = document.getElementById('discussionsContainer');
+
+    const YOUTUBE_API_KEY = 'AIzaSyA9Tzxs4nrdkflcGKslXo00lhlMP9EIIug';
     
     // Set student name
     if (currentUser.firstName) {
