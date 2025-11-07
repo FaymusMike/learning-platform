@@ -1,5 +1,18 @@
 // Authentication functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Wait for Firebase to be initialized
+    function waitForFirebase() {
+        if (window.auth && window.db) {
+            initializeAuth();
+        } else {
+            setTimeout(waitForFirebase, 100);
+        }
+    }
+    
+    waitForFirebase();
+});
+
+function initializeAuth() {
     // DOM Elements
     const loginForm = document.getElementById('loginFormElement');
     const signupForm = document.getElementById('signupFormElement');
@@ -10,12 +23,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const roleCards = document.querySelectorAll('.role-card');
     const googleSignInBtn = document.getElementById('googleSignIn');
 
-    const YOUTUBE_API_KEY = 'AIzaSyA9Tzxs4nrdkflcGKslXo00lhlMP9EIIug';
-    
     let selectedRole = 'student'; // Default role
     
-    // Role selection
+    // Role selection - FIXED: Set initial active state
     roleCards.forEach(card => {
+        // Set student as default active
+        if (card.getAttribute('data-role') === 'student') {
+            card.classList.add('active');
+        }
+        
         card.addEventListener('click', function() {
             // Remove active class from all cards
             roleCards.forEach(c => c.classList.remove('active'));
@@ -23,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             // Set selected role
             selectedRole = this.getAttribute('data-role');
+            console.log('Selected role:', selectedRole);
         });
     });
     
@@ -46,34 +63,55 @@ document.addEventListener('DOMContentLoaded', function() {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         
+        if (!email || !password) {
+            alert('Please fill in all fields');
+            return;
+        }
+        
+        console.log('Logging in as:', selectedRole);
+        
         // Firebase authentication
         auth.signInWithEmailAndPassword(email, password)
             .then((userCredential) => {
                 // Signed in
                 const user = userCredential.user;
                 
-                // Store user data in localStorage
-                localStorage.setItem('currentUser', JSON.stringify({
-                    uid: user.uid,
-                    email: user.email,
-                    role: selectedRole
-                }));
-                
-                // Redirect based on role
-                if (selectedRole === 'teacher') {
-                    window.location.href = 'teacher-dashboard.html';
+                // Get user role from Firestore
+                return db.collection('users').doc(user.uid).get();
+            })
+            .then((doc) => {
+                if (doc.exists) {
+                    const userData = doc.data();
+                    const userRole = userData.role;
+                    
+                    // Store user data in localStorage
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        uid: auth.currentUser.uid,
+                        email: auth.currentUser.email,
+                        firstName: userData.firstName,
+                        lastName: userData.lastName,
+                        role: userRole
+                    }));
+                    
+                    console.log('User role from Firestore:', userRole);
+                    
+                    // Redirect based on actual role from Firestore
+                    if (userRole === 'teacher') {
+                        window.location.href = 'teacher-dashboard.html';
+                    } else {
+                        window.location.href = 'student-dashboard.html';
+                    }
                 } else {
-                    window.location.href = 'student-dashboard.html';
+                    alert('User data not found. Please contact administrator.');
                 }
             })
             .catch((error) => {
-                const errorCode = error.code;
-                const errorMessage = error.message;
-                alert(`Login failed: ${errorMessage}`);
+                console.error('Login error:', error);
+                alert(`Login failed: ${error.message}`);
             });
     });
     
-    // Signup form submission
+    // Signup form submission - FIXED: Proper role saving
     signupForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -89,19 +127,27 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        if (!firstName || !lastName || !email || !password) {
+            alert('Please fill in all fields');
+            return;
+        }
+        
+        console.log('Signing up as:', selectedRole);
+        
         // Firebase authentication
         auth.createUserWithEmailAndPassword(email, password)
             .then((userCredential) => {
                 // Signed up
                 const user = userCredential.user;
                 
-                // Create user document in Firestore
+                // Create user document in Firestore with selected role
                 return db.collection('users').doc(user.uid).set({
                     firstName: firstName,
                     lastName: lastName,
                     email: email,
-                    role: selectedRole,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    role: selectedRole, // This is the FIX - using selectedRole
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                 });
             })
             .then(() => {
@@ -114,7 +160,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     role: selectedRole
                 }));
                 
-                // Redirect based on role
+                console.log('User created with role:', selectedRole);
+                
+                // Redirect based on selected role
                 if (selectedRole === 'teacher') {
                     window.location.href = 'teacher-dashboard.html';
                 } else {
@@ -122,21 +170,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch((error) => {
-                const errorCode = error.code;
-                const errorMessage = error.message;
-                alert(`Signup failed: ${errorMessage}`);
+                console.error('Signup error:', error);
+                alert(`Signup failed: ${error.message}`);
             });
     });
     
-    // Google Sign-In
+    // Google Sign-In - FIXED: Role handling
     googleSignInBtn.addEventListener('click', function() {
         const provider = new firebase.auth.GoogleAuthProvider();
         
         auth.signInWithPopup(provider)
             .then((result) => {
-                // This gives you a Google Access Token
-                const credential = result.credential;
-                const token = credential.accessToken;
                 const user = result.user;
                 
                 // Check if user exists in Firestore
@@ -146,7 +190,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (doc.exists) {
                     // User exists, get their role
                     const userData = doc.data();
-                    selectedRole = userData.role;
+                    const userRole = userData.role;
+                    
+                    // Update last login
+                    return db.collection('users').doc(auth.currentUser.uid).update({
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => userRole);
                 } else {
                     // New user, create document with selected role
                     return db.collection('users').doc(auth.currentUser.uid).set({
@@ -154,46 +203,56 @@ document.addEventListener('DOMContentLoaded', function() {
                         lastName: auth.currentUser.displayName.split(' ')[1] || '',
                         email: auth.currentUser.email,
                         role: selectedRole,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => selectedRole);
                 }
             })
-            .then(() => {
+            .then((userRole) => {
                 // Store user data in localStorage
                 localStorage.setItem('currentUser', JSON.stringify({
                     uid: auth.currentUser.uid,
                     email: auth.currentUser.email,
                     firstName: auth.currentUser.displayName.split(' ')[0],
                     lastName: auth.currentUser.displayName.split(' ')[1] || '',
-                    role: selectedRole
+                    role: userRole
                 }));
                 
                 // Redirect based on role
-                if (selectedRole === 'teacher') {
+                if (userRole === 'teacher') {
                     window.location.href = 'teacher-dashboard.html';
                 } else {
                     window.location.href = 'student-dashboard.html';
                 }
             })
             .catch((error) => {
-                const errorCode = error.code;
-                const errorMessage = error.message;
-                alert(`Google Sign-In failed: ${errorMessage}`);
+                console.error('Google Sign-In error:', error);
+                alert(`Google Sign-In failed: ${error.message}`);
             });
     });
     
     // Check if user is already logged in
     auth.onAuthStateChanged((user) => {
         if (user) {
-            // User is signed in
-            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-            if (currentUser) {
-                if (currentUser.role === 'teacher') {
-                    window.location.href = 'teacher-dashboard.html';
-                } else {
-                    window.location.href = 'student-dashboard.html';
-                }
-            }
+            // User is signed in, check their role
+            db.collection('users').doc(user.uid).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+                        
+                        if (currentUser && currentUser.role) {
+                            if (currentUser.role === 'teacher') {
+                                window.location.href = 'teacher-dashboard.html';
+                            } else {
+                                window.location.href = 'student-dashboard.html';
+                            }
+                        }
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error checking user role:', error);
+                });
         }
     });
-});
+}

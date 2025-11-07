@@ -766,24 +766,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return url;
     }
     
+    // Add this function to both student.js and teacher.js
     function formatDate(timestamp) {
         if (!timestamp) return 'Unknown date';
         
-        const date = timestamp.toDate();
-        const now = new Date();
-        const diffTime = Math.abs(now - date);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) {
-            return '1 day ago';
-        } else if (diffDays < 7) {
-            return `${diffDays} days ago`;
-        } else {
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-            });
+        try {
+            const date = timestamp.toDate();
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 1) {
+                return '1 day ago';
+            } else if (diffDays < 7) {
+                return `${diffDays} days ago`;
+            } else {
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            }
+        } catch (error) {
+            return 'Unknown date';
         }
     }
 });

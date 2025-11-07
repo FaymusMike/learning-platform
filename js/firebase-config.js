@@ -1,4 +1,4 @@
-// Firebase configuration - COMPLETE VERSION
+// Firebase configuration
 console.log("Loading Firebase configuration...");
 
 const firebaseConfig = {
@@ -10,26 +10,46 @@ const firebaseConfig = {
   appId: "1:801871592271:web:db3c8768ea41b52ccbe33a"
 };
 
-// Check if Firebase is available
-if (typeof firebase === 'undefined') {
-  console.error('Firebase SDK not loaded!');
-} else {
-  try {
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    
-    // Initialize services
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    
-    // Make available globally
-    window.auth = auth;
-    window.db = db;
-    
-    console.log('Firebase initialized successfully!');
-    console.log('Project:', firebaseConfig.projectId);
-    
-  } catch (error) {
-    console.error('Firebase initialization error:', error);
+// Wait for Firebase to load
+function initializeFirebase() {
+  if (typeof firebase !== 'undefined') {
+    try {
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      
+      // Initialize services
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      
+      // Make available globally
+      window.auth = auth;
+      window.db = db;
+      
+      console.log('Firebase initialized successfully!');
+      console.log('Project:', firebaseConfig.projectId);
+      
+      // Firestore settings for better offline support
+      db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+      });
+      
+      // Enable persistence
+      db.enablePersistence()
+        .catch((err) => {
+          console.log('Firestore persistence failed: ', err);
+        });
+        
+    } catch (error) {
+      console.error('Firebase initialization error:', error);
+    }
+  } else {
+    console.error('Firebase SDK not loaded yet');
   }
+}
+
+// Initialize when Firebase is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeFirebase);
+} else {
+  initializeFirebase();
 }
